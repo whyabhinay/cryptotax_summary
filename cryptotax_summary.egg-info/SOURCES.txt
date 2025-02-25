@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+cryptotax_summary/__init__.py
+cryptotax_summary/crypto_summary.py
+cryptotax_summary.egg-info/PKG-INFO
+cryptotax_summary.egg-info/SOURCES.txt
+cryptotax_summary.egg-info/dependency_links.txt
+cryptotax_summary.egg-info/entry_points.txt
+cryptotax_summary.egg-info/requires.txt
+cryptotax_summary.egg-info/top_level.txt
+tests/test_crypto_summary.py

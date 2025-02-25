@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+env/  # If you use a virtual environment
+*.csv  # If you don’t want to track raw data files

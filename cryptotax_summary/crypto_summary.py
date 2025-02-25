@@ -27,6 +27,23 @@ def classify_holding_period(date_acquired_str, date_disposed_str):
         print(f"Error processing dates: {e}")
         return None
 
+def map_column_name(column, column_mappings):
+    """
+    Map a column name to a standard required column name if it matches any alias.
+
+    Args:
+        column (str): The column name from the CSV.
+        column_mappings (dict): Mapping of standard names to possible aliases.
+
+    Returns:
+        str or None: The standard column name if matched, None otherwise.
+    """
+    column = str(column).strip().lower()  # Normalize the column name (remove whitespace, lowercase)
+    for standard_name, aliases in column_mappings.items():
+        if column in [alias.strip().lower() for alias in aliases]:
+            return standard_name
+    return None
+
 def calculate_crypto_summary(csv_path):
     """
     Calculate a summary of crypto transactions for tax purposes, categorizing gains/losses
@@ -51,16 +68,56 @@ def calculate_crypto_summary(csv_path):
         raise FileNotFoundError(f"CSV file not found at: {csv_path}")
 
     try:
-        # Read the CSV without assuming the header position, letting pandas infer it
-        df = pd.read_csv(csv_path)
+        # Try reading the CSV with default settings, allowing pandas to infer the header
+        try:
+            df = pd.read_csv(csv_path)
+        except pd.errors.ParserError:
+            # If the default fails, try common delimiters (e.g., tab, semicolon)
+            for delimiter in [',', '\t', ';']:
+                try:
+                    df = pd.read_csv(csv_path, sep=delimiter)
+                    break
+                except pd.errors.ParserError:
+                    continue
+            else:
+                raise ValueError("Invalid CSV format. Please ensure the file is a valid CSV with a header row and try specifying a delimiter (e.g., comma, tab, semicolon).")
 
         # Define strictly required columns (excluding 'Holding period (Days)')
-        required_columns = ['Transaction Type', 'Transaction ID', 'Tax lot ID', 'Asset name',
-                           'Amount', 'Date Acquired', 'Cost basis (USD)', 'Date of Disposition',
-                           'Proceeds (USD)', 'Gains (Losses) (USD)', 'Data source']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            raise ValueError(f"Missing required columns: {missing_columns}")
+        required_columns = {
+            'Transaction Type': ['Transaction Type', 'Trade Type', 'Type'],
+            'Transaction ID': ['Transaction ID', 'Trade ID', 'ID'],
+            'Tax lot ID': ['Tax lot ID', 'Lot ID', 'Tax Lot'],
+            'Asset name': ['Asset name', 'Currency', 'Symbol'],
+            'Amount': ['Amount', 'Quantity'],
+            'Date Acquired': ['Date Acquired', 'Acquisition Date', 'Bought Date'],
+            'Cost basis (USD)': ['Cost basis (USD)', 'Cost Basis', 'Purchase Price (USD)'],
+            'Date of Disposition': ['Date of Disposition', 'Disposition Date', 'Sold Date'],
+            'Proceeds (USD)': ['Proceeds (USD)', 'Sale Proceeds', 'Sale Price (USD)'],
+            'Gains (Losses) (USD)': ['Gains (Losses) (USD)', 'Gain/Loss (USD)', 'Profit/Loss (USD)'],
+            'Data source': ['Data source', 'Source', 'Exchange']
+        }
+
+        # Map CSV columns to required columns using aliases
+        column_mapping = {}
+        for csv_col in df.columns:
+            for std_col, aliases in required_columns.items():
+                if map_column_name(csv_col, {std_col: aliases}):
+                    column_mapping[csv_col] = std_col
+                    break
+            else:
+                # Allow extra columns that aren’t required
+                continue
+
+        # Check if all required columns are present (via mapping or direct match)
+        missing = []
+        for std_col, aliases in required_columns.items():
+            if not any(std_col in column_mapping.values() or map_column_name(col, {std_col: aliases}) for col in df.columns):
+                missing.append(std_col)
+        if missing:
+            raise ValueError(f"Missing required columns: {missing}. Possible aliases include: {', '.join([f'{k} ({", ".join(v)})' for k, v in required_columns.items()])}")
+
+        # Rename columns to standardize for processing
+        df = df.rename(columns=column_mapping)
 
         # Debug: Print the DataFrame to check data
         print("DataFrame after reading CSV:")
@@ -110,7 +167,7 @@ def calculate_crypto_summary(csv_path):
     except pd.errors.EmptyDataError:
         raise ValueError("The CSV file is empty or contains no data after the header.")
     except pd.errors.ParserError:
-        raise ValueError("Invalid CSV format. Please ensure the file is a valid CSV with a header row.")
+        raise ValueError("Invalid CSV format. Please ensure the file is a valid CSV with a header row and try specifying a delimiter (e.g., comma, tab, semicolon).")
 
 def main():
     """Command-line interface for cryptotax_summary."""

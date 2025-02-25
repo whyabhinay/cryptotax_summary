@@ -3,7 +3,7 @@ Name: cryptotax_summary
 Version: 0.1.0
 Summary: A library to summarize crypto transactions for tax reporting
 Home-page: https://github.com/whyabhinay/cryptotax_summary
-Author: Abhi
+Author: Your Name
 Author-email: Abhinay.Yarlagadda@gmail.com
 License: MIT
 Classifier: Programming Language :: Python :: 3
@@ -30,3 +30,13 @@ I am not a tax professional. Please consult a qualified tax expert for your tax 
 
 ```bash
 pip install cryptotax_summary
+```
+
+## Usage
+
+Command-Line Interface
+Run the library directly from the command line with your CSV file:
+
+```bash
+cryptotax_summary CB-GAINLOSSCSV.csv
+```

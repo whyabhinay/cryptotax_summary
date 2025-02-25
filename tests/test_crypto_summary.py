@@ -1,10 +1,11 @@
 import unittest
 from cryptotax_summary import calculate_crypto_summary
+import pandas as pd
+import os
 
 class TestCryptoSummary(unittest.TestCase):
-    def test_summary_calculation(self):
-        # Create a sample CSV file for testing
-        import pandas as pd
+    def setUp(self):
+        # Create a sample CSV file for testing with 7 empty lines before the header
         data = {
             'Transaction Type': ['Sale', 'Sale'],
             'Transaction ID': ['1', '2'],
@@ -20,14 +21,25 @@ class TestCryptoSummary(unittest.TestCase):
             'Data source': ['Exchange', 'Exchange']
         }
         df = pd.DataFrame(data)
-        df.to_csv('test_transactions.csv', index=False)
 
+        # Write the CSV with 7 empty lines before the header
+        with open('test_transactions.csv', 'w') as f:
+            for _ in range(7):  # Add 7 empty lines
+                f.write('\n')
+            df.to_csv(f, index=False)
+
+    def test_summary_calculation(self):
         # Run the summary
         summary = calculate_crypto_summary('test_transactions.csv')
         self.assertIn('short_term_gains_losses', summary)
         self.assertIn('long_term_gains_losses', summary)
         self.assertEqual(summary['short_term_gains_losses'], 500)  # Short-term gain
         self.assertEqual(summary['long_term_gains_losses'], 10000)  # Long-term gain
+
+    def tearDown(self):
+        # Clean up: remove the test CSV file after the test
+        if os.path.exists('test_transactions.csv'):
+            os.remove('test_transactions.csv')
 
 if __name__ == '__main__':
     unittest.main()

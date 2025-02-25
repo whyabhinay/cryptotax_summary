@@ -1,4 +1,3 @@
-# cryptotax_summary/crypto_summary.py
 import pandas as pd
 import os
 import sys
@@ -42,30 +41,26 @@ def calculate_crypto_summary(csv_path):
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Function to determine if a holding period is short-term or long-term
-        def classify_holding_period(date_acquired_str, date_disposed_str):
-            try:
-                date_acquired = pd.to_datetime(date_acquired_str)
-                date_disposed = pd.to_datetime(date_disposed_str)
-                holding_days = (date_disposed - date_acquired).days
-                return 'Short-term' if holding_days <= 365 else 'Long-term'
-            except Exception as e:
-                print(f"Error processing dates: {e}")
-                return None
+        # Debug: Print the DataFrame to check data
+        print("DataFrame after reading CSV:")
+        print(df)
 
-        # Verify or use existing 'Holding period (Days)' column
-        if 'Holding period' not in df.columns:
-            df['Holding period'] = df.apply(
-                lambda row: classify_holding_period(row['Date Acquired'], row['Date of Disposition']),
-                axis=1
-            )
-        else:
-            df['Holding period'] = df['Holding period (Days)'].apply(
-                lambda days: 'Short-term' if days <= 365 else 'Long-term'
-            )
+        # Ensure 'Holding period (Days)' is numeric
+        df['Holding period (Days)'] = pd.to_numeric(df['Holding period (Days)'], errors='coerce')
+
+        # Use 'Holding period (Days)' directly, classifying 365 days as Long-term
+        df['Holding period'] = df['Holding period (Days)'].apply(
+            lambda days: 'Short-term' if pd.notna(days) and days < 365 else 'Long-term'
+        )
+
+        # Debug: Print the DataFrame with the new 'Holding period' column
+        print("DataFrame after adding Holding period:")
+        print(df)
 
         # Calculate totals for gains/losses by holding period
         summary = df.groupby('Holding period')['Gains (Losses) (USD)'].sum().to_dict()
+        print("Summary before finalizing:")
+        print(summary)
 
         # Additional totals for TurboTax
         total_proceeds = df['Proceeds (USD)'].sum()
@@ -78,6 +73,8 @@ def calculate_crypto_summary(csv_path):
             'total_proceeds': total_proceeds,
             'total_cost_basis': total_cost_basis
         }
+        print("Final Summary:")
+        print(result)
         return result
 
     except pd.errors.EmptyDataError:

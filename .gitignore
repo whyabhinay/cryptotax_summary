@@ -3,8 +3,10 @@ __pycache__
 *.pyo
 *.pyd
 *.pypirc
+.gitignore
 .DS_Store
 *egg-info/
+tests/*.csv
 env/  # If you use a virtual environment
 *.csv  # If you don’t want to track raw data files
 dist/

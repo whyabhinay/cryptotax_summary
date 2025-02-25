@@ -1,2 +1,0 @@
-[console_scripts]
-cryptotax_summary = cryptotax_summary.crypto_summary:main

@@ -4,5 +4,8 @@ __pycache__
 *.pyd
 *.pypirc
 .DS_Store
+*egg-info/
 env/  # If you use a virtual environment
 *.csv  # If you don’t want to track raw data files
+dist/
+build/

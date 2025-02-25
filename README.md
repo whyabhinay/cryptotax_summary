@@ -10,19 +10,19 @@ Ensure that you use the Gain/Loss Statement as the input file for accurate proce
 
 Please note that you may still be required to mail your Gain/Loss statement to the IRS. I am not a tax professional; therefore, please consult a qualified tax expert for guidance on your tax filing and any additional questions.
 
-## Installation
+## Step 1: Install the Tool
+
+Open the “Terminal” on Mac
 
 ```bash
 pip install cryptotax_summary
 ```
 
-## Usage
+## Step 2: Run the Tool with Your GAINLOSSCSV File from Coinbase
 
 Command-Line Interface
-Run the library directly from the command line with your CSV file:
+Run the library directly from the command line with your CSV file: 
 
 ```bash
-cryptotax_summary CB-GAINLOSSCSV.csv
+cryptotax_summary Coinbase-2024-CB-TURBOTAX-GAINLOSS.csv
 ```
-
-## Example

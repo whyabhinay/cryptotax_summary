@@ -21,7 +21,6 @@ def classify_holding_period(date_acquired_str, date_disposed_str):
         date_disposed = pd.to_datetime(date_disposed_str, format='%Y-%m-%d', utc=True)
         # Calculate the holding period in days, ensuring whole days
         holding_days = (date_disposed.date() - date_acquired.date()).days
-        print(f"Debug: Holding days for {date_acquired.date()} to {date_disposed.date()}: {holding_days}")
         return 'Short-term' if holding_days < 365 else 'Long-term'
     except Exception as e:
         print(f"Error processing dates: {e}")
@@ -119,10 +118,6 @@ def calculate_crypto_summary(csv_path):
         # Rename columns to standardize for processing
         df = df.rename(columns=column_mapping)
 
-        # Debug: Print the DataFrame to check data
-        print("DataFrame after reading CSV:")
-        print(df)
-
         # Ensure 'Holding period (Days)' is numeric if it exists
         if 'Holding period (Days)' in df.columns:
             df['Holding period (Days)'] = pd.to_numeric(df['Holding period (Days)'], errors='coerce')
@@ -140,14 +135,8 @@ def calculate_crypto_summary(csv_path):
                 axis=1
             )
 
-        # Debug: Print the DataFrame with the new 'Holding period' column
-        print("DataFrame after adding Holding period:")
-        print(df)
-
         # Calculate totals for gains/losses by holding period
         summary = df.groupby('Holding period')['Gains (Losses) (USD)'].sum().to_dict()
-        print("Summary before finalizing:")
-        print(summary)
 
         # Additional totals for TurboTax
         total_proceeds = df['Proceeds (USD)'].sum()
@@ -160,8 +149,6 @@ def calculate_crypto_summary(csv_path):
             'total_proceeds': total_proceeds,
             'total_cost_basis': total_cost_basis
         }
-        print("Final Summary:")
-        print(result)
         return result
 
     except pd.errors.EmptyDataError:

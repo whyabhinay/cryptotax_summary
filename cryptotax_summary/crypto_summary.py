@@ -4,6 +4,29 @@ import sys
 from datetime import datetime
 import argparse
 
+def classify_holding_period(date_acquired_str, date_disposed_str):
+    """
+    Determine if a holding period is short-term or long-term based on acquisition and disposition dates.
+
+    Args:
+        date_acquired_str (str): Date the asset was acquired (e.g., '2024-01-01').
+        date_disposed_str (str): Date the asset was disposed of (e.g., '2024-12-31').
+
+    Returns:
+        str: 'Short-term' if held < 365 days, 'Long-term' otherwise.
+    """
+    try:
+        # Explicitly specify the date format to avoid ambiguity
+        date_acquired = pd.to_datetime(date_acquired_str, format='%Y-%m-%d', utc=True)
+        date_disposed = pd.to_datetime(date_disposed_str, format='%Y-%m-%d', utc=True)
+        # Calculate the holding period in days, ensuring whole days
+        holding_days = (date_disposed.date() - date_acquired.date()).days
+        print(f"Debug: Holding days for {date_acquired.date()} to {date_disposed.date()}: {holding_days}")
+        return 'Short-term' if holding_days < 365 else 'Long-term'
+    except Exception as e:
+        print(f"Error processing dates: {e}")
+        return None
+
 def calculate_crypto_summary(csv_path):
     """
     Calculate a summary of crypto transactions for tax purposes, categorizing gains/losses
@@ -11,32 +34,30 @@ def calculate_crypto_summary(csv_path):
 
     Args:
         csv_path (str): Path to the CSV file containing crypto transaction data.
-                        The CSV should have a header on row 8 (Excel row 1) and include
-                        columns like 'Transaction Type', 'Transaction ID', 'Tax lot ID',
-                        'Asset name', 'Amount', 'Date Acquired', 'Cost basis (USD)',
+                        The CSV should include columns like 'Transaction Type', 'Transaction ID',
+                        'Tax lot ID', 'Asset name', 'Amount', 'Date Acquired', 'Cost basis (USD)',
                         'Date of Disposition', 'Proceeds (USD)', 'Gains (Losses) (USD)',
-                        'Holding period (Days)', 'Data source'.
+                        'Holding period (Days)' (optional), 'Data source'. The header can be anywhere in the file.
 
     Returns:
         dict: Summary with totals for short-term and long-term gains/losses, proceeds, and cost basis.
 
     Raises:
         FileNotFoundError: If the CSV file is not found.
-        ValueError: If the CSV format is incorrect or missing required columns.
+        ValueError: If required columns are missing or the CSV format is invalid.
     """
     # Check if the file exists
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"CSV file not found at: {csv_path}")
 
     try:
-        # Read the CSV, skipping rows 1-7 (Excel rows 1-7) and using row 8 as header
-        df = pd.read_csv(csv_path, skiprows=7, header=0)
+        # Read the CSV without assuming the header position, letting pandas infer it
+        df = pd.read_csv(csv_path)
 
-        # Verify required columns exist
+        # Define strictly required columns (excluding 'Holding period (Days)')
         required_columns = ['Transaction Type', 'Transaction ID', 'Tax lot ID', 'Asset name',
                            'Amount', 'Date Acquired', 'Cost basis (USD)', 'Date of Disposition',
-                           'Proceeds (USD)', 'Gains (Losses) (USD)', 'Holding period (Days)',
-                           'Data source']
+                           'Proceeds (USD)', 'Gains (Losses) (USD)', 'Data source']
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
@@ -45,13 +66,22 @@ def calculate_crypto_summary(csv_path):
         print("DataFrame after reading CSV:")
         print(df)
 
-        # Ensure 'Holding period (Days)' is numeric
-        df['Holding period (Days)'] = pd.to_numeric(df['Holding period (Days)'], errors='coerce')
+        # Ensure 'Holding period (Days)' is numeric if it exists
+        if 'Holding period (Days)' in df.columns:
+            df['Holding period (Days)'] = pd.to_numeric(df['Holding period (Days)'], errors='coerce')
 
-        # Use 'Holding period (Days)' directly, classifying 365 days as Long-term
-        df['Holding period'] = df['Holding period (Days)'].apply(
-            lambda days: 'Short-term' if pd.notna(days) and days < 365 else 'Long-term'
-        )
+        # Use 'Holding period (Days)' if present and not all NaN, otherwise fall back to date-based classification
+        if 'Holding period (Days)' in df.columns and not df['Holding period (Days)'].isna().all():
+            df['Holding period'] = df['Holding period (Days)'].apply(
+                lambda days: 'Short-term' if pd.notna(days) and days < 365 else 'Long-term'
+            )
+        else:
+            if 'Date Acquired' not in df.columns or 'Date of Disposition' not in df.columns:
+                raise ValueError("Missing 'Date Acquired' or 'Date of Disposition' for date-based holding period calculation.")
+            df['Holding period'] = df.apply(
+                lambda row: classify_holding_period(row['Date Acquired'], row['Date of Disposition']),
+                axis=1
+            )
 
         # Debug: Print the DataFrame with the new 'Holding period' column
         print("DataFrame after adding Holding period:")
@@ -80,7 +110,7 @@ def calculate_crypto_summary(csv_path):
     except pd.errors.EmptyDataError:
         raise ValueError("The CSV file is empty or contains no data after the header.")
     except pd.errors.ParserError:
-        raise ValueError("Invalid CSV format. Ensure the file has a header on row 8 and correct data.")
+        raise ValueError("Invalid CSV format. Please ensure the file is a valid CSV with a header row.")
 
 def main():
     """Command-line interface for cryptotax_summary."""
